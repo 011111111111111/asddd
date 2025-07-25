@@ -1,45 +1,36 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Chat App</title>
-  <style>
-    body { font-family: Arial; }
-    #messages { list-style: none; padding: 0; }
-    #messages li { padding: 5px 10px; }
-    #form { display: flex; margin-top: 10px; }
-    #input { flex: 1; padding: 10px; }
-    #send { padding: 10px; }
-  </style>
-</head>
-<body>
-  <h2>Simple Chat App</h2>
-  <ul id="messages"></ul>
-  <form id="form">
-    <input id="input" autocomplete="off" placeholder="Type your message..." /><button id="send">Send</button>
-  </form>
+const express = require('express');
+const http = require('http');
+const path = require('path');
+const socketIO = require('socket.io');
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script>
-    const socket = io();
+const app = express();
+const server = http.createServer(app);
+const io = socketIO(server);
 
-    const form = document.getElementById('form');
-    const input = document.getElementById('input');
-    const messages = document.getElementById('messages');
+// Serve static files
+app.use(express.static(path.join(__dirname, 'public')));
 
-    form.addEventListener('submit', function(e) {
-      e.preventDefault();
-      if (input.value) {
-        socket.emit('chat message', input.value);
-        input.value = '';
-      }
-    });
+// Default route
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
-    socket.on('chat message', function(msg) {
-      const item = document.createElement('li');
-      item.textContent = msg;
-      messages.appendChild(item);
-      window.scrollTo(0, document.body.scrollHeight);
-    });
-  </script>
-</body>
-</html>
+// Socket.IO logic
+io.on('connection', socket => {
+  console.log('A user connected');
+
+  // Broadcast received message to all clients
+  socket.on('chat message', msg => {
+    io.emit('chat message', msg);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected');
+  });
+});
+
+// Start server
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
